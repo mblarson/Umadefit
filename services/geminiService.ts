@@ -4,12 +4,18 @@ import { GeneratedImagePart } from "../types";
 const MODEL_NAME = 'gemini-2.5-flash-image'; // Using flash-image for good balance of speed and capability
 const GENERATE_CONTENT_TIMEOUT_MS = 60000; // 60 seconds
 
+// CRÍTICO: Por favor, substitua 'SUA_CHAVE_API_GEMINI_AQUI' pela sua chave real da API Gemini.
+// ATENÇÃO DE SEGURANÇA: Colocar a API Key diretamente no código frontend (client-side)
+// a expõe publicamente. Qualquer pessoa pode inspecionar o código e ver/usar sua chave.
+// Para uma solução mais segura, seria necessário um backend proxy.
+const GEMINI_API_KEY = 'AIzaSyDimy9pWVupJHm1DXruLjGwYMSwn_wK8HA'; // <-- Substitua por sua chave real!
+
 const initGemini = (): GoogleGenAI => {
-  if (!process.env.API_KEY) {
-    console.error("API_KEY is not defined. Please ensure it's set in your environment variables.");
-    throw new Error("API_KEY is not defined.");
+  if (GEMINI_API_KEY === 'AIzaSyDimy9pWVupJHm1DXruLjGwYMSwn_wK8HA' || !GEMINI_API_KEY) {
+    console.error("A API_KEY do Gemini não foi definida ou é o placeholder. Por favor, edite 'services/geminiService.ts' com sua chave real.");
+    throw new Error("API_KEY do Gemini não definida.");
   }
-  return new GoogleGenAI({ apiKey: process.env.API_KEY });
+  return new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 };
 
 // Helper to extract MIME type and base64 data from a data URL (e.g., "data:image/png;base64,...")
@@ -97,7 +103,7 @@ export const applyClothingItem = async (
 
     for (const part of response.candidates?.[0]?.content?.parts || []) {
       if (part.inlineData) {
-        return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+        return `data:${part.inlineData.mimeType};base664,${part.inlineData.data}`;
       }
     }
     throw new Error('No image found in Gemini response.');
