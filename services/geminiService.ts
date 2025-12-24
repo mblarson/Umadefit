@@ -2,9 +2,6 @@ import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 
 const MODEL_NAME = 'gemini-2.5-flash-image';
 
-// Silent check for the developer only
-const isConfigured = () => typeof process !== 'undefined' && !!process.env.API_KEY;
-
 const toPart = (dataUrl: string) => {
   const [header, data] = dataUrl.split(',');
   const mimeType = header.split(':')[1].split(';')[0];
@@ -23,14 +20,9 @@ export const applyClothingItem = async (
   flatArtBase64?: string
 ): Promise<string | undefined> => {
   
-  const apiKey = process.env.API_KEY;
-  
-  if (!apiKey || apiKey === "undefined") {
-    console.error("ERRO CRÍTICO: API_KEY não configurada no ambiente.");
-    throw new Error("INTERNAL_CONFIG_ERROR");
-  }
-
-  const ai = new GoogleGenAI({ apiKey });
+  // Acessa a chave diretamente conforme a regra do SDK
+  // Criamos a instância sempre dentro da função para pegar o valor mais atualizado
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const parts: any[] = [
     toPart(userImageBase64),
@@ -61,12 +53,16 @@ export const applyClothingItem = async (
         }
       }
     }
-    throw new Error("Não foi possível processar a imagem. Certifique-se de que você aparece por inteiro na foto.");
+    throw new Error("Não conseguimos processar o seu look. Tente tirar uma foto mais clara e de corpo inteiro.");
   } catch (error: any) {
-    if (error.message === "INTERNAL_CONFIG_ERROR") {
-      throw new Error("O provador está em manutenção técnica rápida. Tente novamente em alguns minutos.");
+    console.error("Erro técnico:", error);
+    
+    // Se a chave estiver vazia no erro do SDK
+    if (error.message?.includes("API key") || !process.env.API_KEY) {
+      throw new Error("O sistema está sincronizando as configurações. Por favor, recarregue a página e tente novamente.");
     }
-    throw new Error("Estamos recebendo muitos acessos! Por favor, tente novamente em alguns segundos.");
+    
+    throw new Error("O servidor de IA está muito ocupado. Tente novamente em 5 segundos.");
   }
 };
 
