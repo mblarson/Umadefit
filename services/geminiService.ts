@@ -1,6 +1,6 @@
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 
-// Modelo Flash 2.5: Rápido, eficiente e ideal para evitar custos elevados
+// Modelo 2.5 Flash: Focado em velocidade e baixo custo
 const MODEL_NAME = 'gemini-2.5-flash-image';
 
 const toPart = (dataUrl: string) => {
@@ -21,8 +21,14 @@ export const applyClothingItem = async (
   flatArtBase64?: string
 ): Promise<string | undefined> => {
   
-  // Inicializa o SDK com a chave do ambiente
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = process.env.API_KEY;
+  
+  if (!apiKey) {
+    throw new Error("REAUTH_NEEDED");
+  }
+
+  // Sempre cria uma nova instância para garantir que usa a chave mais atual do ambiente
+  const ai = new GoogleGenAI({ apiKey });
   
   const parts: any[] = [
     toPart(userImageBase64),
@@ -41,7 +47,6 @@ export const applyClothingItem = async (
       config: {
         imageConfig: {
           aspectRatio: "3:4"
-          // imageSize não é suportado no modelo 2.5 Flash, removido para evitar erros
         }
       }
     });
@@ -54,16 +59,20 @@ export const applyClothingItem = async (
         }
       }
     }
-    throw new Error("Não foi possível gerar a prévia. Tente uma foto com fundo mais simples.");
+    throw new Error("A IA não retornou uma imagem válida. Tente outra foto.");
   } catch (error: any) {
-    console.error("Erro Gemini 2.5:", error);
+    console.error("Erro no provador 2.5:", error);
     
-    // Se a chave não for encontrada ou der erro de entidade, solicita re-autenticação
-    if (error.message?.includes("entity was not found") || error.message?.includes("API key")) {
+    // Erros específicos que exigem re-seleção da chave
+    if (
+      error.message?.includes("API key") || 
+      error.message?.includes("Requested entity was not found") ||
+      error.message?.includes("not found")
+    ) {
       throw new Error("REAUTH_NEEDED");
     }
     
-    throw new Error("O sistema de IA está processando muitas requisições. Aguarde um instante.");
+    throw new Error("O servidor está processando muitas imagens. Tente novamente em alguns segundos.");
   }
 };
 
