@@ -2,12 +2,8 @@ import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 
 const MODEL_NAME = 'gemini-2.5-flash-image';
 
-// Diagnóstico silencioso para o desenvolvedor validar no console (F12)
-if (typeof process !== 'undefined' && process.env.API_KEY) {
-  console.info("UMADEFIT: Motor de IA configurado com sucesso.");
-} else {
-  console.warn("UMADEFIT: Chave de API não detectada no ambiente. Verifique as variáveis de ambiente do projeto.");
-}
+// Silent check for the developer only
+const isConfigured = () => typeof process !== 'undefined' && !!process.env.API_KEY;
 
 const toPart = (dataUrl: string) => {
   const [header, data] = dataUrl.split(',');
@@ -29,8 +25,8 @@ export const applyClothingItem = async (
   
   const apiKey = process.env.API_KEY;
   
-  // Se a chave não existir, lançamos um erro interno que será mascarado na UI
   if (!apiKey || apiKey === "undefined") {
+    console.error("ERRO CRÍTICO: API_KEY não configurada no ambiente.");
     throw new Error("INTERNAL_CONFIG_ERROR");
   }
 
@@ -65,17 +61,12 @@ export const applyClothingItem = async (
         }
       }
     }
-    throw new Error("Não foi possível detectar as peças na foto. Tente uma foto com fundo mais claro.");
+    throw new Error("Não foi possível processar a imagem. Certifique-se de que você aparece por inteiro na foto.");
   } catch (error: any) {
-    console.error("Erro na operação:", error);
-
-    // Se for erro de chave/configuração, o usuário vê "Manutenção"
-    if (error.message === "INTERNAL_CONFIG_ERROR" || error.message?.includes("API key")) {
-      throw new Error("O provador está passando por uma atualização rápida. Por favor, tente novamente em instantes.");
+    if (error.message === "INTERNAL_CONFIG_ERROR") {
+      throw new Error("O provador está em manutenção técnica rápida. Tente novamente em alguns minutos.");
     }
-    
-    // Para outros erros (timeout, rede, IA ocupada)
-    throw new Error("O sistema está processando muitos looks agora. Tente novamente em alguns segundos.");
+    throw new Error("Estamos recebendo muitos acessos! Por favor, tente novamente em alguns segundos.");
   }
 };
 

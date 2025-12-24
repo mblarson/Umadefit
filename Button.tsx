@@ -15,18 +15,18 @@ const Button: React.FC<ButtonProps> = ({
   className = '',
   ...props
 }) => {
-  const baseStyles = 'font-semibold rounded-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900';
+  const baseStyles = 'font-bold rounded-2xl transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-950 uppercase tracking-wider text-sm';
   
   const sizeStyles = {
-    sm: 'px-4 py-2 text-sm',
-    md: 'px-6 py-3 text-base',
-    lg: 'px-8 py-4 text-lg',
+    sm: 'px-4 py-2 text-xs',
+    md: 'px-6 py-4 text-sm',
+    lg: 'px-8 py-5 text-base',
   };
 
   const variantStyles = {
-    primary: 'bg-purple-600 text-white hover:bg-purple-700 focus:ring-purple-500',
-    secondary: 'bg-gray-700 text-gray-100 hover:bg-gray-600 focus:ring-gray-500',
-    outline: 'border border-purple-600 text-purple-400 hover:bg-purple-900 focus:ring-purple-500',
+    primary: 'bg-gradient-to-r from-yellow-500 to-orange-600 text-black hover:from-yellow-400 hover:to-orange-500 focus:ring-yellow-500 shadow-lg shadow-orange-900/20 active:scale-95',
+    secondary: 'bg-gray-800 text-gray-200 hover:bg-gray-700 focus:ring-gray-600 border border-white/5',
+    outline: 'border-2 border-yellow-500/50 text-yellow-500 hover:bg-yellow-500/10 focus:ring-yellow-500',
   };
 
   return (
