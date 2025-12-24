@@ -1,6 +1,7 @@
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 
-const MODEL_NAME = 'gemini-2.5-flash-image';
+// Modelo Pro para maior fidelidade em tecidos e detalhes do Jubileu
+const MODEL_NAME = 'gemini-3-pro-image-preview';
 
 const toPart = (dataUrl: string) => {
   const [header, data] = dataUrl.split(',');
@@ -20,14 +21,8 @@ export const applyClothingItem = async (
   flatArtBase64?: string
 ): Promise<string | undefined> => {
   
-  // Obtém a chave do ambiente. Se for a string "undefined" ou vazia, tratamos como erro de config.
-  const apiKey = process.env.API_KEY;
-  
-  if (!apiKey || apiKey === "undefined" || apiKey.length < 10) {
-    throw new Error("CONFIG_SYNC_ERROR");
-  }
-
-  const ai = new GoogleGenAI({ apiKey });
+  // Instancia o SDK usando a chave injetada pelo sistema
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const parts: any[] = [
     toPart(userImageBase64),
@@ -45,7 +40,8 @@ export const applyClothingItem = async (
       contents: { parts },
       config: {
         imageConfig: {
-          aspectRatio: "3:4"
+          aspectRatio: "3:4",
+          imageSize: "1K" // Qualidade superior
         }
       }
     });
@@ -58,15 +54,15 @@ export const applyClothingItem = async (
         }
       }
     }
-    throw new Error("Não foi possível processar. Tente uma foto com iluminação melhor.");
+    throw new Error("A IA não conseguiu processar esta imagem. Tente uma foto mais nítida.");
   } catch (error: any) {
-    console.error("Gemini Error:", error);
+    console.error("Erro na API Gemini:", error);
     
-    if (error.message?.includes("API key") || error.message?.includes("not found")) {
-      throw new Error("CONFIG_SYNC_ERROR");
+    if (error.message?.includes("entity was not found") || error.message?.includes("API key")) {
+      throw new Error("REAUTH_NEEDED");
     }
     
-    throw new Error("O motor de IA está processando muitas requisições. Tente novamente em alguns segundos.");
+    throw new Error("O servidor está ocupado criando looks. Tente novamente em 10 segundos.");
   }
 };
 

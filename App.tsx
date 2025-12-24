@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { AppStep, TshirtItem, Outfit } from './types';
 import { applyClothingItem, imageUrlToBase64 } from './services/geminiService';
@@ -6,6 +7,14 @@ import TshirtSelection from './components/TshirtSelection';
 import ResultScreen from './components/ResultScreen';
 import LoadingSpinner from './components/LoadingSpinner';
 import Button from './Button';
+
+// O ambiente já define o tipo AIStudio, então estendemos o Window usando esse tipo.
+// A propriedade é declarada como opcional (?) para coincidir com os modificadores da declaração original.
+declare global {
+  interface Window {
+    aistudio?: AIStudio;
+  }
+}
 
 const mockTshirts: TshirtItem[] = [
   { 
@@ -27,8 +36,8 @@ const mockTshirts: TshirtItem[] = [
 const LOADING_MESSAGES = [
   "Ajustando o caimento...",
   "Sincronizando iluminação...",
-  "Aplicando estampa Dourada...",
-  "Finalizando seu visual...",
+  "Aplicando estampa Jubileu...",
+  "Tecendo fios de ouro...",
 ];
 
 function App() {
@@ -39,7 +48,18 @@ function App() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [loadingMessage, setLoadingMessage] = useState<string>(LOADING_MESSAGES[0]);
   const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
-  const [isConfigError, setIsConfigError] = useState<boolean>(false);
+  const [isKeySelected, setIsKeySelected] = useState<boolean>(true);
+
+  // Verifica se a chave está ativa no ambiente
+  useEffect(() => {
+    const checkKey = async () => {
+      if (window.aistudio) {
+        const hasKey = await window.aistudio.hasSelectedApiKey();
+        setIsKeySelected(hasKey);
+      }
+    };
+    checkKey();
+  }, []);
 
   useEffect(() => {
     let interval: number;
@@ -53,6 +73,14 @@ function App() {
     return () => clearInterval(interval);
   }, [isLoading]);
 
+  const handleOpenKeySelector = async () => {
+    if (window.aistudio) {
+      await window.aistudio.openSelectKey();
+      setIsKeySelected(true);
+      setErrorMessage(undefined);
+    }
+  };
+
   const resetAppState = useCallback(() => {
     setCurrentStep(AppStep.UPLOAD_PHOTO);
     setUserPhotoBase64(undefined);
@@ -60,40 +88,32 @@ function App() {
     setOutfit({});
     setIsLoading(false);
     setErrorMessage(undefined);
-    setIsConfigError(false);
   }, []);
-
-  const handleRefresh = () => {
-    window.location.reload();
-  };
 
   const handleSelectTshirt = async (selectedTshirt: TshirtItem) => {
     if (!userPhotoBase64) return;
 
     setIsLoading(true);
     setErrorMessage(undefined);
-    setIsConfigError(false);
     setOutfit(prev => ({ ...prev, tshirt: selectedTshirt }));
 
     try {
       const mockupBase64 = await imageUrlToBase64(selectedTshirt.mockupUrl);
       const flatArtBase64 = await imageUrlToBase64(selectedTshirt.flatArtUrl);
 
-      const prompt = `Virtual Try-On Ultra-Realistic Simulation:
-        1. PERSPECTIVE: Anatomically correct placement of the t-shirt on the person's body. 
-        2. PHYSICS: Match the cloth folds and wrinkles to the person's pose.
-        3. INTEGRATION: Seamlessly blend edges with skin/hair.
-        4. COLOR: ${selectedTshirt.name.includes('Laranja') ? 'Bright Vibrant Orange' : 'Deep Forest Emerald Green'}.
-        5. LOGO: Gold jubilee print following torso curvature perfectly.
-        6. LIGHTING: Match background light source and shadows exactly.
-        7. KEEP: Face, hair, and background original.`;
+      const prompt = `Virtual Clothing Try-On High-Fidelity Simulation:
+        - ACTION: Put the provided t-shirt mockup onto the person in the user photo.
+        - FIT: Ensure the t-shirt follows the body contours, muscles, and pose naturally.
+        - DETAIL: Preserve the exact gold logo from the mockup/flat art.
+        - QUALITY: Photorealistic, matching shadows and ambient light.
+        - DO NOT change the person's face, hair, or background.`;
 
       const result = await applyClothingItem(userPhotoBase64, mockupBase64, prompt, flatArtBase64);
       if (result) setVirtualTryonImageBase64(result);
     } catch (error: any) {
-      if (error.message === "CONFIG_SYNC_ERROR") {
-        setIsConfigError(true);
-        setErrorMessage("A chave de acesso foi detectada, mas ainda não foi ativada pelo servidor.");
+      if (error.message === "REAUTH_NEEDED") {
+        setIsKeySelected(false);
+        setErrorMessage("Conexão expirada. Por favor, reative o servidor de IA.");
       } else {
         setErrorMessage(error.message);
       }
@@ -101,6 +121,28 @@ function App() {
       setIsLoading(false);
     }
   };
+
+  if (!isKeySelected) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center p-6">
+        <div className="w-full max-w-sm bg-white/5 border border-white/10 rounded-[2.5rem] p-10 text-center backdrop-blur-xl shadow-2xl">
+          <div className="w-20 h-20 bg-gradient-to-tr from-yellow-500 to-orange-600 rounded-3xl mx-auto mb-8 flex items-center justify-center shadow-lg shadow-orange-600/20">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-black italic tracking-tighter text-white mb-4 uppercase">ATIVAR PROVADOR</h2>
+          <p className="text-gray-400 text-sm mb-10 leading-relaxed font-medium">
+            Para usar a IA do Jubileu de Ouro, você precisa conectar sua chave de acesso. Clique no botão abaixo para autorizar o servidor.
+          </p>
+          <Button onClick={handleOpenKeySelector} fullWidth size="lg">
+            Conectar Servidor de IA
+          </Button>
+          <p className="mt-6 text-[10px] text-gray-600 uppercase tracking-widest font-bold">UMADEMATS • 50 ANOS</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-950 text-white font-sans flex flex-col items-center">
@@ -124,13 +166,8 @@ function App() {
         <div className="flex-1 flex flex-col">
           {errorMessage && (
             <div className="mx-6 mt-6 p-6 bg-red-500/10 border border-red-500/20 rounded-[2rem] text-center animate-in slide-in-from-top duration-500">
-              <span className="text-3xl block mb-3">🛠️</span>
-              <p className="font-bold text-red-400 mb-4">{errorMessage}</p>
-              {isConfigError && (
-                <Button onClick={handleRefresh} variant="primary" size="sm">
-                  Sincronizar Agora
-                </Button>
-              )}
+              <span className="text-3xl block mb-3">⚠️</span>
+              <p className="font-bold text-red-400">{errorMessage}</p>
             </div>
           )}
 
