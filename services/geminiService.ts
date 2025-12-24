@@ -20,9 +20,14 @@ export const applyClothingItem = async (
   flatArtBase64?: string
 ): Promise<string | undefined> => {
   
-  // Acessa a chave diretamente conforme a regra do SDK
-  // Criamos a instância sempre dentro da função para pegar o valor mais atualizado
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  // Obtém a chave do ambiente. Se for a string "undefined" ou vazia, tratamos como erro de config.
+  const apiKey = process.env.API_KEY;
+  
+  if (!apiKey || apiKey === "undefined" || apiKey.length < 10) {
+    throw new Error("CONFIG_SYNC_ERROR");
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
   
   const parts: any[] = [
     toPart(userImageBase64),
@@ -53,16 +58,15 @@ export const applyClothingItem = async (
         }
       }
     }
-    throw new Error("Não conseguimos processar o seu look. Tente tirar uma foto mais clara e de corpo inteiro.");
+    throw new Error("Não foi possível processar. Tente uma foto com iluminação melhor.");
   } catch (error: any) {
-    console.error("Erro técnico:", error);
+    console.error("Gemini Error:", error);
     
-    // Se a chave estiver vazia no erro do SDK
-    if (error.message?.includes("API key") || !process.env.API_KEY) {
-      throw new Error("O sistema está sincronizando as configurações. Por favor, recarregue a página e tente novamente.");
+    if (error.message?.includes("API key") || error.message?.includes("not found")) {
+      throw new Error("CONFIG_SYNC_ERROR");
     }
     
-    throw new Error("O servidor de IA está muito ocupado. Tente novamente em 5 segundos.");
+    throw new Error("O motor de IA está processando muitas requisições. Tente novamente em alguns segundos.");
   }
 };
 
