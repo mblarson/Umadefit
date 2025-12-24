@@ -1,21 +1,19 @@
 import React, { useState, ChangeEvent } from 'react';
-import Button from './Button';
+import Button from '../Button';
 
 interface ImageUploadProps {
-  onPhotoUpload: (base64Image: string, file: File) => void;
+  onPhotoUpload: (base64Image: string) => void;
   currentPhotoBase64?: string;
   isLoading: boolean;
 }
 
 const ImageUpload: React.FC<ImageUploadProps> = ({ onPhotoUpload, currentPhotoBase64, isLoading }) => {
   const [previewUrl, setPreviewUrl] = useState<string | undefined>(currentPhotoBase64);
-  const [selectedFile, setSelectedFile] = useState<File | undefined>(undefined);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
       const file = event.target.files[0];
-      setSelectedFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreviewUrl(reader.result as string);
@@ -25,14 +23,13 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onPhotoUpload, currentPhotoBa
   };
 
   const handleContinue = () => {
-    if (previewUrl && selectedFile) {
-      onPhotoUpload(previewUrl, selectedFile);
+    if (previewUrl) {
+      onPhotoUpload(previewUrl);
     }
   };
 
   const handleTrocarFoto = () => {
     setPreviewUrl(undefined);
-    setSelectedFile(undefined);
     if (fileInputRef.current) {
       fileInputRef.current.value = ''; // Clear the file input
     }

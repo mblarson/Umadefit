@@ -1,118 +1,78 @@
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 
-const MODEL_NAME = 'gemini-2.5-flash-image'; // Using flash-image for good balance of speed and capability
-const GENERATE_CONTENT_TIMEOUT_MS = 60000; // 60 seconds
+// Modelo Flash: Ideal para alta demanda, rápido e estável
+const MODEL_NAME = 'gemini-2.5-flash-image';
 
-const initGemini = (): GoogleGenAI => {
-  // Use process.env.API_KEY directly as per environment requirements.
-  // This variable is assumed to be pre-configured and accessible in this context.
-  return new GoogleGenAI({ apiKey: process.env.API_KEY });
+const toPart = (dataUrl: string) => {
+  const [header, data] = dataUrl.split(',');
+  const mimeType = header.split(':')[1].split(';')[0];
+  return {
+    inlineData: {
+      mimeType,
+      data,
+    },
+  };
 };
 
-// Helper to extract MIME type and base64 data from a data URL (e.g., "data:image/png;base64,...")
-const parseDataUrl = (dataUrl: string) => {
-  const parts = dataUrl.split(',');
-  if (parts.length < 2) {
-    throw new Error('Invalid data URL format.');
+export const applyClothingItem = async (
+  userImageBase64: string,
+  mockupImageBase64: string,
+  prompt: string,
+  flatArtBase64?: string
+): Promise<string | undefined> => {
+  
+  const apiKey = process.env.API_KEY;
+  
+  if (!apiKey) {
+    throw new Error("Conecte sua chave do Google AI Studio para ativar o motor de teste.");
   }
-  const meta = parts[0].split(';');
-  const mimeType = meta[0].split(':')[1]; // Extracts "image/png" from "data:image/png"
-  const data = parts[1]; // The actual base64 encoded data
-  return { mimeType, data };
+
+  const ai = new GoogleGenAI({ apiKey });
+  
+  const parts: any[] = [
+    toPart(userImageBase64),
+    toPart(mockupImageBase64),
+    { text: prompt }
+  ];
+
+  if (flatArtBase64) {
+    parts.push(toPart(flatArtBase64));
+  }
+
+  try {
+    const response: GenerateContentResponse = await ai.models.generateContent({
+      model: MODEL_NAME,
+      contents: { parts },
+      config: {
+        imageConfig: {
+          aspectRatio: "3:4"
+          // imageSize removido para compatibilidade com o modelo Flash
+        }
+      }
+    });
+    
+    const candidate = response.candidates?.[0];
+    if (candidate?.content?.parts) {
+      for (const part of candidate.content.parts) {
+        if (part.inlineData) {
+          return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+        }
+      }
+    }
+    throw new Error("A IA não conseguiu processar a imagem. Tente uma foto mais clara e de frente.");
+  } catch (error: any) {
+    console.error("Erro na geração Flash:", error);
+    throw new Error("Falha no processamento: " + (error.message || "Tente novamente em instantes."));
+  }
 };
 
-// Helper to fetch an image URL and convert it to a base64 data URL
 export const imageUrlToBase64 = async (url: string): Promise<string> => {
   const response = await fetch(url);
   const blob = await response.blob();
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onloadend = () => {
-      if (typeof reader.result === 'string') {
-        resolve(reader.result);
-      } else {
-        reject(new Error('Failed to read blob as data URL.'));
-      }
-    };
+    reader.onloadend = () => resolve(reader.result as string);
     reader.onerror = reject;
     reader.readAsDataURL(blob);
-  });
-};
-
-export const applyClothingItem = async (
-  currentImageBase64: string,
-  clothingItemImageBase64: string,
-  promptText: string,
-  flatArtImageBase64?: string, // Novo parâmetro opcional para a arte da estampa
-): Promise<string | undefined> => {
-  const ai = initGemini();
-
-  // Dynamically extract MIME type and data from the data URLs
-  const { mimeType: userImageMimeType, data: userImageData } = parseDataUrl(currentImageBase64);
-  const { mimeType: clothingImageMimeType, data: clothingImageData } = parseDataUrl(clothingItemImageBase64);
-
-  const contentsParts: any[] = [
-    {
-      inlineData: {
-        mimeType: userImageMimeType,
-        data: userImageData,
-      },
-    },
-    {
-      inlineData: {
-        mimeType: clothingImageMimeType,
-        data: clothingImageData,
-      },
-    },
-    { text: promptText },
-  ];
-
-  if (flatArtImageBase64) {
-    const { mimeType: flatArtMimeType, data: flatArtData } = parseDataUrl(flatArtImageBase64);
-    contentsParts.push({
-      inlineData: {
-        mimeType: flatArtMimeType,
-        data: flatArtData,
-      },
-    });
-  }
-
-  try {
-    const response: GenerateContentResponse = await Promise.race([
-      ai.models.generateContent({
-        model: MODEL_NAME,
-        contents: {
-          parts: contentsParts,
-        },
-      }),
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('API request timed out')), GENERATE_CONTENT_TIMEOUT_MS))
-    ]);
-
-    for (const part of response.candidates?.[0]?.content?.parts || []) {
-      if (part.inlineData) {
-        // FIXED base664 -> base64
-        return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-      }
-    }
-    throw new Error('No image found in Gemini response.');
-  } catch (error) {
-    console.error("Error applying clothing item:", error);
-    throw error;
-  }
-};
-
-// Helper for image upload, just converts to base64
-export const processUploadedImage = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      if (typeof reader.result === 'string') {
-        resolve(reader.result);
-      } else {
-        reject(new Error('Failed to read file as string.'));
-      }
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
   });
 };

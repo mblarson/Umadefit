@@ -1,6 +1,6 @@
 import React from 'react';
 import { TshirtItem } from '../types'; // Import TshirtItem specifically
-import Button from './Button';
+import Button from '../Button';
 
 interface TshirtSelectionProps {
   tshirts: TshirtItem[]; // tshirts prop now expects TshirtItem[]
