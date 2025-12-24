@@ -1,6 +1,7 @@
+
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 
-// Modelo 2.5 Flash: Focado em velocidade e baixo custo
+// Modelo Gemini 2.5 Flash: Eficiente e sem custo elevado
 const MODEL_NAME = 'gemini-2.5-flash-image';
 
 const toPart = (dataUrl: string) => {
@@ -21,13 +22,14 @@ export const applyClothingItem = async (
   flatArtBase64?: string
 ): Promise<string | undefined> => {
   
+  // A chave é obtida exclusivamente do ambiente conforme regra do sistema
   const apiKey = process.env.API_KEY;
   
   if (!apiKey) {
-    throw new Error("REAUTH_NEEDED");
+    throw new Error("Serviço temporariamente indisponível. Tente novamente em instantes.");
   }
 
-  // Sempre cria uma nova instância para garantir que usa a chave mais atual do ambiente
+  // Inicializa o cliente diretamente na função para garantir acesso à chave atualizada
   const ai = new GoogleGenAI({ apiKey });
   
   const parts: any[] = [
@@ -59,20 +61,10 @@ export const applyClothingItem = async (
         }
       }
     }
-    throw new Error("A IA não retornou uma imagem válida. Tente outra foto.");
+    throw new Error("Não foi possível gerar a prévia. Tente uma foto com fundo mais limpo.");
   } catch (error: any) {
-    console.error("Erro no provador 2.5:", error);
-    
-    // Erros específicos que exigem re-seleção da chave
-    if (
-      error.message?.includes("API key") || 
-      error.message?.includes("Requested entity was not found") ||
-      error.message?.includes("not found")
-    ) {
-      throw new Error("REAUTH_NEEDED");
-    }
-    
-    throw new Error("O servidor está processando muitas imagens. Tente novamente em alguns segundos.");
+    console.error("Erro Gemini:", error.message);
+    throw new Error("Erro na IA: Verifique sua conexão e tente novamente.");
   }
 };
 

@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { AppStep, TshirtItem, Outfit } from './types';
 import { applyClothingItem, imageUrlToBase64 } from './services/geminiService';
@@ -6,17 +7,6 @@ import TshirtSelection from './components/TshirtSelection';
 import ResultScreen from './components/ResultScreen';
 import LoadingSpinner from './components/LoadingSpinner';
 import Button from './Button';
-
-// O ambiente fornece o objeto aistudio para gerenciar chaves de forma segura
-declare global {
-  interface AIStudio {
-    hasSelectedApiKey: () => Promise<boolean>;
-    openSelectKey: () => Promise<void>;
-  }
-  interface Window {
-    aistudio?: AIStudio;
-  }
-}
 
 const mockTshirts: TshirtItem[] = [
   { 
@@ -36,10 +26,10 @@ const mockTshirts: TshirtItem[] = [
 ];
 
 const LOADING_MESSAGES = [
-  "Conectando ao Gemini 2.5 Flash...",
-  "Tecendo o manto do Jubileu...",
-  "Ajustando reflexos dourados...",
-  "Finalizando sua simulação...",
+  "Iniciando motor Gemini 2.5 Flash...",
+  "Tecendo fios de ouro...",
+  "Sincronizando luz e sombra...",
+  "Finalizando visual do Jubileu...",
 ];
 
 function App() {
@@ -50,21 +40,6 @@ function App() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [loadingMessage, setLoadingMessage] = useState<string>(LOADING_MESSAGES[0]);
   const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
-  const [isKeySelected, setIsKeySelected] = useState<boolean>(true);
-
-  // Verifica a chave ao carregar e quando houver erro de autenticação
-  const checkApiKeyStatus = useCallback(async () => {
-    if (window.aistudio) {
-      const hasKey = await window.aistudio.hasSelectedApiKey();
-      setIsKeySelected(hasKey);
-      return hasKey;
-    }
-    return true; // Se não houver helper, assume que process.env.API_KEY está disponível
-  }, []);
-
-  useEffect(() => {
-    checkApiKeyStatus();
-  }, [checkApiKeyStatus]);
 
   useEffect(() => {
     let interval: number;
@@ -73,19 +48,10 @@ function App() {
       interval = window.setInterval(() => {
         i = (i + 1) % LOADING_MESSAGES.length;
         setLoadingMessage(LOADING_MESSAGES[i]);
-      }, 2000); 
+      }, 2500); 
     }
     return () => clearInterval(interval);
   }, [isLoading]);
-
-  const handleOpenKeySelector = async () => {
-    if (window.aistudio) {
-      await window.aistudio.openSelectKey();
-      // Após abrir o seletor, assumimos sucesso para prosseguir
-      setIsKeySelected(true);
-      setErrorMessage(undefined);
-    }
-  };
 
   const resetAppState = useCallback(() => {
     setCurrentStep(AppStep.UPLOAD_PHOTO);
@@ -107,48 +73,20 @@ function App() {
       const mockupBase64 = await imageUrlToBase64(selectedTshirt.mockupUrl);
       const flatArtBase64 = await imageUrlToBase64(selectedTshirt.flatArtUrl);
 
-      const prompt = `Virtual Clothing Try-On Simulation using Gemini 2.5 Flash:
-        1. Identify the person in the user photo.
-        2. Replace their upper body clothing with the provided t-shirt mockup.
-        3. Match the pose, body shape, and shadows perfectly.
-        4. Ensure the gold logo from the art is clearly visible on the chest.
-        5. Photorealistic output only.`;
+      const prompt = `Virtual Fashion Simulation using Gemini 2.5 Flash:
+        Photorealistically overlay the provided t-shirt onto the person in the photo.
+        The chest logo must be perfectly visible. 
+        Adjust for lighting, pose, and natural clothing folds.
+        Output ONLY the resulting image.`;
 
       const result = await applyClothingItem(userPhotoBase64, mockupBase64, prompt, flatArtBase64);
       if (result) setVirtualTryonImageBase64(result);
     } catch (error: any) {
-      if (error.message === "REAUTH_NEEDED") {
-        setIsKeySelected(false);
-        setErrorMessage("A conexão com o Google Cloud precisa ser renovada.");
-      } else {
-        setErrorMessage(error.message);
-      }
+      setErrorMessage(error.message);
     } finally {
       setIsLoading(false);
     }
   };
-
-  if (!isKeySelected) {
-    return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center p-6 text-white font-sans">
-        <div className="w-full max-w-sm bg-white/5 border border-white/10 rounded-[2.5rem] p-10 text-center backdrop-blur-xl shadow-2xl">
-          <div className="w-20 h-20 bg-gradient-to-tr from-yellow-500 to-orange-600 rounded-3xl mx-auto mb-8 flex items-center justify-center shadow-lg shadow-orange-600/20">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-            </svg>
-          </div>
-          <h2 className="text-2xl font-black italic tracking-tighter mb-4 uppercase leading-none">ATIVAR ACESSO GOOGLE</h2>
-          <p className="text-gray-400 text-sm mb-10 leading-relaxed">
-            Para usar o motor <strong>Gemini 2.5 Flash</strong> sem custos, você precisa autorizar a conexão com sua chave de API do Google Cloud.
-          </p>
-          <Button onClick={handleOpenKeySelector} fullWidth size="lg">
-            Sincronizar Chave de API
-          </Button>
-          <p className="mt-8 text-[9px] text-gray-700 uppercase tracking-widest font-black">UMADEMATS • EDIÇÃO DE OURO</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-950 text-white font-sans flex flex-col items-center">
@@ -174,7 +112,7 @@ function App() {
             <div className="mx-6 mt-6 p-6 bg-red-500/10 border border-red-500/20 rounded-[2rem] text-center animate-in slide-in-from-top duration-500">
               <span className="text-3xl block mb-3">⚠️</span>
               <p className="font-bold text-red-400">{errorMessage}</p>
-              <Button onClick={() => checkApiKeyStatus()} variant="outline" size="sm" className="mt-4">Tentar Reconectar</Button>
+              <Button onClick={() => setErrorMessage(undefined)} variant="outline" size="sm" className="mt-4">Entendi</Button>
             </div>
           )}
 
