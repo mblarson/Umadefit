@@ -1,7 +1,7 @@
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 
-// Modelo Pro para maior fidelidade em tecidos e detalhes do Jubileu
-const MODEL_NAME = 'gemini-3-pro-image-preview';
+// Modelo Flash 2.5: Rápido, eficiente e ideal para evitar custos elevados
+const MODEL_NAME = 'gemini-2.5-flash-image';
 
 const toPart = (dataUrl: string) => {
   const [header, data] = dataUrl.split(',');
@@ -21,7 +21,7 @@ export const applyClothingItem = async (
   flatArtBase64?: string
 ): Promise<string | undefined> => {
   
-  // Instancia o SDK usando a chave injetada pelo sistema
+  // Inicializa o SDK com a chave do ambiente
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const parts: any[] = [
@@ -40,8 +40,8 @@ export const applyClothingItem = async (
       contents: { parts },
       config: {
         imageConfig: {
-          aspectRatio: "3:4",
-          imageSize: "1K" // Qualidade superior
+          aspectRatio: "3:4"
+          // imageSize não é suportado no modelo 2.5 Flash, removido para evitar erros
         }
       }
     });
@@ -54,15 +54,16 @@ export const applyClothingItem = async (
         }
       }
     }
-    throw new Error("A IA não conseguiu processar esta imagem. Tente uma foto mais nítida.");
+    throw new Error("Não foi possível gerar a prévia. Tente uma foto com fundo mais simples.");
   } catch (error: any) {
-    console.error("Erro na API Gemini:", error);
+    console.error("Erro Gemini 2.5:", error);
     
+    // Se a chave não for encontrada ou der erro de entidade, solicita re-autenticação
     if (error.message?.includes("entity was not found") || error.message?.includes("API key")) {
       throw new Error("REAUTH_NEEDED");
     }
     
-    throw new Error("O servidor está ocupado criando looks. Tente novamente em 10 segundos.");
+    throw new Error("O sistema de IA está processando muitas requisições. Aguarde um instante.");
   }
 };
 

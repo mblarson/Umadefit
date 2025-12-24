@@ -8,11 +8,15 @@ import ResultScreen from './components/ResultScreen';
 import LoadingSpinner from './components/LoadingSpinner';
 import Button from './Button';
 
-// O ambiente já define o tipo AIStudio, então estendemos o Window usando esse tipo.
-// A propriedade é declarada como opcional (?) para coincidir com os modificadores da declaração original.
+// Declaração segura para o helper de chave de API do ambiente
+// Usando a interface AIStudio que o TypeScript reporta como já existente no escopo global para evitar conflitos de tipo
 declare global {
+  interface AIStudio {
+    hasSelectedApiKey: () => Promise<boolean>;
+    openSelectKey: () => Promise<void>;
+  }
   interface Window {
-    aistudio?: AIStudio;
+    aistudio: AIStudio;
   }
 }
 
@@ -34,10 +38,10 @@ const mockTshirts: TshirtItem[] = [
 ];
 
 const LOADING_MESSAGES = [
-  "Ajustando o caimento...",
-  "Sincronizando iluminação...",
-  "Aplicando estampa Jubileu...",
-  "Tecendo fios de ouro...",
+  "Iniciando motor Flash 2.5...",
+  "Ajustando tecido...",
+  "Sincronizando cores...",
+  "Finalizando look do Jubileu...",
 ];
 
 function App() {
@@ -50,7 +54,7 @@ function App() {
   const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
   const [isKeySelected, setIsKeySelected] = useState<boolean>(true);
 
-  // Verifica se a chave está ativa no ambiente
+  // Verifica se o ambiente possui uma chave ativa
   useEffect(() => {
     const checkKey = async () => {
       if (window.aistudio) {
@@ -101,19 +105,17 @@ function App() {
       const mockupBase64 = await imageUrlToBase64(selectedTshirt.mockupUrl);
       const flatArtBase64 = await imageUrlToBase64(selectedTshirt.flatArtUrl);
 
-      const prompt = `Virtual Clothing Try-On High-Fidelity Simulation:
-        - ACTION: Put the provided t-shirt mockup onto the person in the user photo.
-        - FIT: Ensure the t-shirt follows the body contours, muscles, and pose naturally.
-        - DETAIL: Preserve the exact gold logo from the mockup/flat art.
-        - QUALITY: Photorealistic, matching shadows and ambient light.
-        - DO NOT change the person's face, hair, or background.`;
+      const prompt = `Virtual Try-On (Gemini 2.5 Flash): 
+        Place the provided t-shirt mockup on the person in the user photo. 
+        Match lighting, body pose, and ensure the gold logo is clearly visible and correctly warped. 
+        Output only the final photorealistic image.`;
 
       const result = await applyClothingItem(userPhotoBase64, mockupBase64, prompt, flatArtBase64);
       if (result) setVirtualTryonImageBase64(result);
     } catch (error: any) {
       if (error.message === "REAUTH_NEEDED") {
         setIsKeySelected(false);
-        setErrorMessage("Conexão expirada. Por favor, reative o servidor de IA.");
+        setErrorMessage("Sessão expirada. Ative o provador novamente.");
       } else {
         setErrorMessage(error.message);
       }
@@ -122,21 +124,22 @@ function App() {
     }
   };
 
+  // Tela de bloqueio apenas se a chave não estiver no ambiente
   if (!isKeySelected) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center p-6 text-white font-sans">
         <div className="w-full max-w-sm bg-white/5 border border-white/10 rounded-[2.5rem] p-10 text-center backdrop-blur-xl shadow-2xl">
           <div className="w-20 h-20 bg-gradient-to-tr from-yellow-500 to-orange-600 rounded-3xl mx-auto mb-8 flex items-center justify-center shadow-lg shadow-orange-600/20">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
           </div>
-          <h2 className="text-2xl font-black italic tracking-tighter text-white mb-4 uppercase">ATIVAR PROVADOR</h2>
-          <p className="text-gray-400 text-sm mb-10 leading-relaxed font-medium">
-            Para usar a IA do Jubileu de Ouro, você precisa conectar sua chave de acesso. Clique no botão abaixo para autorizar o servidor.
+          <h2 className="text-2xl font-black italic tracking-tighter mb-4 uppercase">ATIVAR PROVADOR 2.5</h2>
+          <p className="text-gray-400 text-sm mb-10 leading-relaxed">
+            O motor Gemini 2.5 Flash precisa ser inicializado para esta sessão.
           </p>
           <Button onClick={handleOpenKeySelector} fullWidth size="lg">
-            Conectar Servidor de IA
+            Sincronizar IA
           </Button>
           <p className="mt-6 text-[10px] text-gray-600 uppercase tracking-widest font-bold">UMADEMATS • 50 ANOS</p>
         </div>
